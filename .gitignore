@@ -1,4 +1,6 @@
 .pypirc
+.gitignore
+.gradio
 
 specs/
 
@@ -33,6 +35,11 @@ Thumbs.db
 
 # Project-specific ignores
 attachments/
+
+# Podcast project specifics
+projects/
+data/
+podcastfy/configs
 
 # Logs
 *.log
