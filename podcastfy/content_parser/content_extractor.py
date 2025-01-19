@@ -10,8 +10,8 @@ import logging
 import re
 from typing import List, Union
 from urllib.parse import urlparse
-from .youtube_transcriber import YouTubeTranscriber
-from .website_extractor import WebsiteExtractor
+#from .youtube_transcriber import YouTubeTranscriber
+#from .website_extractor import WebsiteExtractor
 from .pdf_extractor import PDFExtractor
 from podcastfy.utils.config import load_config
 
@@ -22,8 +22,8 @@ class ContentExtractor:
 		"""
 		Initialize the ContentExtractor.
 		"""
-		self.youtube_transcriber = YouTubeTranscriber()
-		self.website_extractor = WebsiteExtractor()
+		#self.youtube_transcriber = YouTubeTranscriber()
+		#self.website_extractor = WebsiteExtractor()
 		self.pdf_extractor = PDFExtractor()
 		self.config = load_config()
 		self.content_extractor_config = self.config.get('content_extractor', {})
@@ -64,12 +64,13 @@ class ContentExtractor:
 		try:
 			if source.lower().endswith('.pdf'):
 				return self.pdf_extractor.extract_content(source)
-			elif self.is_url(source):
-				if any(pattern in source for pattern in self.content_extractor_config['youtube_url_patterns']):
-					return self.youtube_transcriber.extract_transcript(source)
-				else:
-					return self.website_extractor.extract_content(source)
-			else:
+			# For the moment, focus on PDFs only
+			#elif self.is_url(source):
+			#	if any(pattern in source for pattern in self.content_extractor_config['youtube_url_patterns']):
+			#		return self.youtube_transcriber.extract_transcript(source)
+			#	else:
+			#		return self.website_extractor.extract_content(source)
+			#else:
 				raise ValueError("Unsupported source type")
 		except Exception as e:
 			logger.error(f"Error extracting content from {source}: {str(e)}")
