@@ -259,9 +259,6 @@ class LongFormContentGenerator:
             else:
                 chat_context = chat_context + response
             print(f"Generated part {i+1}/{num_parts}: Size {len(chunk)} characters.")
-            #print(f"[LLM-START] Step: {i+1} ##############################")
-            #print(response)
-            #print(f"[LLM-END] Step: {i+1} ##############################")
             conversation_parts.append(response)
 
         return self.stitch_conversations(conversation_parts)
@@ -528,87 +525,6 @@ class LongFormContentStrategy(ContentGenerationStrategy, ContentCleanerMixin):
         
         return final_transcript
 
-         
-    def _clean_transcript_response_DEPRECATED(self, transcript: str, config: Dict[str, Any]) -> str:
-        """
-        Clean transcript using a two-step process with LLM-based cleaning.
-        
-        First cleans the markup using a specialized prompt template, then rewrites
-        for better flow and consistency using a second prompt template.
-        
-        Args:
-            transcript (str): Raw transcript text that may contain scratchpad blocks
-            config (Dict[str, Any]): Configuration dictionary containing LLM and prompt settings
-            
-        Returns:
-            str: Cleaned and rewritten transcript with proper tags and improved flow
-            
-        Note:
-            Falls back to original or partially cleaned transcript if any cleaning step fails
-        """
-        logger.debug("Starting transcript cleaning process")
-        try:
-            logger.debug("Initializing LLM model for cleaning")
-            # Initialize model with config values for consistent cleaning
-            #llm = ChatGoogleGenerativeAI(
-            #    model=self.content_generator_config["meta_llm_model"],
-            #    temperature=0,
-            #    presence_penalty=0.75,  # Encourage diverse content
-            #    frequency_penalty=0.75  # Avoid repetition
-            #)
-            llm = self.llm
-            logger.debug("LLM model initialized successfully")
-
-            # Get prompt templates from hub
-            logger.debug("Pulling prompt templates from hub")
-            try:
-                clean_transcript_prompt = hub.pull(f"{self.content_generator_config['cleaner_prompt_template']}:{self.content_generator_config['cleaner_prompt_commit']}")
-                rewrite_prompt = hub.pull(f"{self.content_generator_config['rewriter_prompt_template']}:{self.content_generator_config['rewriter_prompt_commit']}")
-                logger.debug("Successfully pulled prompt templates")
-            except Exception as e:
-                logger.error(f"Error pulling prompt templates: {str(e)}")
-                return transcript
-            
-            logger.debug("Creating cleaning and rewriting chains")
-            # Create chains
-            clean_chain = clean_transcript_prompt | llm | StrOutputParser()
-            rewrite_chain = rewrite_prompt | llm | StrOutputParser()
-            
-            # Run cleaning chain
-            logger.debug("Executing cleaning chain")
-            try:
-                cleaned_response = clean_chain.invoke({"transcript": transcript})
-                if not cleaned_response:
-                    logger.warning("Cleaning chain returned empty response")
-                    return transcript
-                logger.debug("Successfully cleaned transcript")
-            except Exception as e:
-                logger.error(f"Error in cleaning chain: {str(e)}")
-                return transcript
-            
-            # Run rewriting chain
-            logger.debug("Executing rewriting chain")
-            try:
-                rewritten_response = rewrite_chain.invoke({"transcript": cleaned_response})
-                if not rewritten_response:
-                    logger.warning("Rewriting chain returned empty response")
-                    return cleaned_response  # Fall back to cleaned version
-                logger.debug("Successfully rewrote transcript")
-            except Exception as e:
-                logger.error(f"Error in rewriting chain: {str(e)}")
-                return cleaned_response  # Fall back to cleaned version
-                
-            # Fix alternating tags in the final response
-            logger.debug("Fixing alternating tags")
-            final_transcript = self._fix_alternating_tags(rewritten_response)
-            logger.debug("Completed transcript cleaning process")
-            
-            return final_transcript
-            
-        except Exception as e:
-            logger.error(f"Error in transcript cleaning process: {str(e)}")
-            return transcript  # Return original if cleaning fails
-
     def _fix_alternating_tags(self, transcript: str) -> str:
         """
         Ensures transcript has properly alternating Person1 and Person2 tags.
@@ -706,7 +622,7 @@ class ContentGenerator:
     def __init__(
         self, 
         is_local: bool=False, 
-        model_name: str="gemini-1.5-pro-latest", 
+        model_name: str="gemini-1.5-flash-latest", 
         api_key_label: str="GEMINI_API_KEY",
         conversation_config: Optional[Dict[str, Any]] = None
     ):
@@ -745,7 +661,7 @@ class ContentGenerator:
             is_local=is_local,
             temperature=self.config_conversation.get("creativity", 1),
             max_output_tokens=self.content_generator_config.get(
-                "max_output_tokens", 8192
+                "max_output_tokens", 2**20
             ),
             model_name=model_name,
             api_key_label=api_key_label,
@@ -882,6 +798,8 @@ class ContentGenerator:
                 input_texts
             )
 
+            print(f"Prompt params: {prompt_params}")
+            print(f"Prompt template: {self.prompt_template}")
             # Generate content using selected strategy
             self.response = strategy.generate(
                 self.chain,
