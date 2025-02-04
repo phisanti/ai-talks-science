@@ -14,7 +14,7 @@ from podcastfy.content_parser.content_extractor import ContentExtractor
 from podcastfy.content_generator import ContentGenerator
 from podcastfy.text_to_speech import TextToSpeech
 from podcastfy.utils.config import Config, load_config
-from podcastfy.utils.config_conversation import load_conversation_config
+from podcastfy.utils.config_conversation import load_conversation_config, ConversationConfig
 from podcastfy.utils.logger import setup_logger
 from typing import List, Optional, Dict, Any
 import copy
@@ -62,7 +62,11 @@ def process_content(
             config = load_config()
 
         # Load default conversation config
-        conv_config = load_conversation_config()
+        if conversation_config is None:
+            conv_config = load_conversation_config()
+        else:
+            conv_config = ConversationConfig(config_conversation=conversation_config)    
+        #conv_config = conversation_config if conversation_config else load_conversation_config()
 
         # Update with provided config if any
         if conversation_config:
@@ -119,8 +123,8 @@ def process_content(
                 output_filepath=transcript_filepath,
                 longform=longform
             )
-
-        if generate_audio:
+        # TODO: block audio generation for now, just testing prompt engineering
+        if generate_audio and False:
             api_key = None
             if tts_model != "edge":
                 api_key = getattr(config, f"{tts_model.upper().replace('MULTI', '')}_API_KEY")

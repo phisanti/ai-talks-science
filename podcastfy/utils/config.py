@@ -11,7 +11,7 @@ from dotenv import load_dotenv, find_dotenv
 from typing import Any, Dict, Optional
 import yaml
 
-def get_config_path(config_file: str = 'config.yaml'):
+def get_config_path(config_file: str = 'configs/config.yaml'):
 	"""
 	Get the path to the config.yaml file.
 	
@@ -38,7 +38,7 @@ def get_config_path(config_file: str = 'config.yaml'):
 		return None
 
 class Config:
-	def __init__(self, config_file: str = 'config.yaml'):
+	def __init__(self, config_file: str = 'configs/config.yaml'):
 		"""
 		Initialize the Config class by loading environment variables and YAML configuration.
 

@@ -130,19 +130,24 @@ class NestedConfig:
 				setattr(self, key, value)
 
 class ConversationConfig(NestedConfig):
-	def __init__(self, config_conversation: Optional[Dict[str, Any]] = None):
+	def __init__(self, config_conversation: Optional[Dict[str, Any]] = None, path: str = None,):
 		"""
 		Initialize the ConversationConfig class with a dictionary configuration.
 
 		Args:
 			config_conversation (Optional[Dict[str, Any]]): Configuration dictionary. If None, default config will be used.
 		"""
-		# Load default configuration
-		self.config_conversation = self._load_default_config()
+		# Load configuration
+		if path is None and config_conversation is None:
+			self.config_conversation = self._load_default_config(config_conversation)
+		elif path is not None:
+			self.config_conversation = self._load_default_config(path)
+
 		if config_conversation is not None:
 			import copy
 			
 			# Create a deep copy of the default configuration
+			self.config_conversation = config_conversation
 			self.config_conversation = copy.deepcopy(self.config_conversation)
 			
 			# Update the configuration with provided values
@@ -154,9 +159,9 @@ class ConversationConfig(NestedConfig):
 		# Initialize the NestedConfig with the configuration
 		super().__init__(self.config_conversation)
 
-	def _load_default_config(self) -> Dict[str, Any]:
+	def _load_default_config(self, path) -> Dict[str, Any]:
 		"""Load the default configuration from conversation_config.yaml."""
-		config_path = get_conversation_config_path()
+		config_path = get_conversation_config_path(path)
 		if config_path:
 			with open(config_path, 'r') as file:
 				return yaml.safe_load(file)
