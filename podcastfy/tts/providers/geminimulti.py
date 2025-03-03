@@ -224,28 +224,21 @@ class GeminiMultiTTS(TTSProvider):
         """
         logger.info(f"Starting audio generation for text of length: {len(text)}")
         logger.debug(f"Parameters: voice={voice}, voice2={voice2}, model={model}")
-        #print("######################### TEXT #########################")
-        #print(text)
-        #print("######################### END TEXT #########################")
         try:
             # Split text into chunks if needed
             text_chunks = self.chunk_text(text)
             logger.info(f"#########################33 Text split into {len(text_chunks)} chunks")
             audio_chunks = []
-            #print(text_chunks[0])
             
             # Process each chunk
             for i, chunk in enumerate(text_chunks, 1):
                 logger.debug(f"Processing chunk {i}/{len(text_chunks)}")
                 # Create multi-speaker markup
                 multi_speaker_markup = texttospeech_v1beta1.MultiSpeakerMarkup()
-                #print("######################### CHUNK #########################")
-                #print(chunk)
                 # Get Q&A pairs for this chunk
                 qa_pairs = self.split_qa(chunk, "", self.get_supported_tags())
                 logger.debug(f"Found {len(qa_pairs)} Q&A pairs in chunk {i}")
-                #print("######################### QA PAIRS #########################")
-                #print(qa_pairs)
+
                 # Add turns for each Q&A pair
                 for j, (question, answer) in enumerate(qa_pairs, 1):
                     logger.debug(f"Processing Q&A pair {j}/{len(qa_pairs)}")
@@ -290,9 +283,6 @@ class GeminiMultiTTS(TTSProvider):
                 # Set audio config
                 audio_config = texttospeech_v1beta1.AudioConfig(
                     audio_encoding=texttospeech_v1beta1.AudioEncoding.MP3,
-                    #sample_rate_hertz=44100,  # Specify sample rate
-                    #effects_profile_id=['headphone-class-device'],  # Optimize for headphones
-                    #speaking_rate=1.0,  # Normal speaking rate
                 )
                 
                 # Generate speech for this chunk
@@ -303,8 +293,6 @@ class GeminiMultiTTS(TTSProvider):
                 )
 
                 audio_chunks.append(response.audio_content)
-            #print(f"#### Audio chunks: {audio_chunks}")
-            #print(f"#### Audio chunks length: {len(audio_chunks)}")
             return audio_chunks
         
             

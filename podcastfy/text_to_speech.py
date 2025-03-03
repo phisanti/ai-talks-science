@@ -40,7 +40,6 @@ class TextToSpeech:
         self.config = load_config()
         self.conversation_config = load_conversation_config(conversation_config)
         self.tts_config = self.conversation_config.get("text_to_speech", {})
-
         # Get API key from config if not provided
         if not api_key:
             api_key = getattr(self.config, f"{model.upper().replace('MULTI', '')}_API_KEY", None)
@@ -62,7 +61,6 @@ class TextToSpeech:
 
         # Get provider config from tts_config
         provider_config = self.tts_config.get(provider_name, {})
-
         # If provider config is empty, try getting from default config
         if not provider_config:
             provider_config = {
@@ -72,7 +70,6 @@ class TextToSpeech:
                     "answer": self.tts_config.get("default_voice_answer"),
                 },
             }
-
         logger.debug(f"Using provider config: {provider_config}")
         return provider_config
 
@@ -88,7 +85,6 @@ class TextToSpeech:
             ValueError: If the input text is not properly formatted
         """
         # Validate transcript format
-        # self._validate_transcript_format(text)
 
         cleaned_text = text
 
@@ -118,10 +114,6 @@ class TextToSpeech:
                     combined = AudioSegment.empty()
                     
                     for i, chunk in enumerate(audio_data_list):
-                        # Save chunk to temporary file
-                        #temp_file = "./tmp.mp3"
-                        #with open(temp_file, "wb") as f:
-                        #    f.write(chunk)
                         
                         segment = AudioSegment.from_file(io.BytesIO(chunk))
                         logger.info(f"################### Loaded chunk {i}, duration: {len(segment)}ms")
