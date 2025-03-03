@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Dict, Optional
+from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +82,66 @@ class TemplateLoader:
             
         return formatted
 
+    def get_sections(self, template_name: str, section_markers: List[str], remove_hashtags: bool = False) -> str:
+        """
+        Extract specific sections from the template based on section markers.
+        
+        Args:
+            template_path: Path to the template file
+            section_markers: List of section markers to find (e.g., ["Background", "MainContributions"])
+            remove_hashtags: Whether to remove hashtags from section titles
+
+        Returns:
+            The content of the specified sections
+        """
+        full_template=self.template_cache[template_name]
+        if not full_template:
+            return ""
+        
+        sections_content = []
+        current_section = None
+        capture = False
+        section_text = ""
+        
+        for line in full_template.splitlines():
+            if line.startswith("#"):
+                # If we were capturing a section, save it before moving to new section
+                if current_section and capture:
+                    sections_content.append(current_section + section_text)
+                
+                # Start a new section
+                section_name = line.strip("# ").strip()
+                if remove_hashtags:
+                    current_section = section_name + "\n"
+                else:
+                    current_section = line + "\n"
+                    
+                section_text = ""
+                
+                # Check if any section marker is in the section name
+                capture = any(marker in section_name for marker in section_markers)
+            elif capture:
+                section_text += line + "\n"
+
+        
+        # Add the last section if it was being captured
+        if current_section and capture:
+            sections_content.append(current_section + section_text)
+        
+        combined_content = "\n".join(sections_content).strip()
+        return combined_content
+
 
 if __name__ == "__main__":
+    # Basic test for template loading
     loader = TemplateLoader()
-    template = loader.get_template("./podcastfy/configs/longform_template.md")
-    print(template)
+    template = loader.get_template("./podcastfy/configs/generate_qa.md")
+    print("Full template loaded:", bool(template))
+    
+    # Test the get_sections method
+    print("\nTesting get_sections method:")
+    sections = ["Background"]
+    
+    section_content = loader.get_sections("generate_qa", ["1. Background", "SPECIFICITYSTRATEGY:", "TASK:", "REQUIREMENTS:"], remove_hashtags=True)
+    section_found = bool(section_content)    
+    print(section_content)
