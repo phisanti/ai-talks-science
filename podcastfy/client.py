@@ -10,12 +10,13 @@ import os
 import uuid
 import typer
 import yaml
-from podcastfy.content_parser.content_extractor import ContentExtractor
-from podcastfy.content_generator import ContentGenerator
+from podcastfy.template_reader import TemplateLoader
+from podcastfy.gen_conversation.conversify import PodcastGenerator
 from podcastfy.text_to_speech import TextToSpeech
 from podcastfy.utils.config import Config, load_config
 from podcastfy.utils.config_conversation import load_conversation_config, ConversationConfig
 from podcastfy.utils.logger import setup_logger
+from podcastfy.content_generator import LLMBackend
 from typing import List, Optional, Dict, Any
 import copy
 
@@ -74,60 +75,71 @@ def process_content(
         # Get output directories from conversation config
         tts_config = conv_config.get("text_to_speech", {})
         output_directories = tts_config.get("output_directories", {})
+        transcripts_dir = output_directories.get("transcripts", "data/transcripts")
+        if not os.path.exists(transcripts_dir):
+            os.makedirs(transcripts_dir)
 
         if transcript_file:
             logger.info(f"Using transcript file: {transcript_file}")
             with open(transcript_file, "r") as file:
                 qa_content = file.read()
         else:
-            # Initialize content_extractor if needed
-            content_extractor = None
-            if urls or topic or (text and longform and len(text.strip()) < 100):
-                content_extractor = ContentExtractor()
-
-            content_generator = ContentGenerator(
-                is_local=is_local,
-                model_name=model_name,
-                api_key_label=api_key_label,
-                conversation_config=conv_config.to_dict()
-            )
-
-            combined_content = ""
+            pdf_urls = [url for url in urls or [] if url.lower().endswith('.pdf')]
             
-            if urls:
-                logger.info(f"Processing {len(urls)} links")
-                contents = [content_extractor.extract_content(link) for link in urls]
-                combined_content += "\n\n".join(contents)
-
-            if text:
-                if longform and len(text.strip()) < 100:
-                    logger.info("Text too short for direct long-form generation. Extracting context...")
-                    expanded_content = content_extractor.generate_topic_content(text)
-                    combined_content += f"\n\n{expanded_content}"
-                else:
-                    combined_content += f"\n\n{text}"
-
-            if topic:
-                topic_content = content_extractor.generate_topic_content(topic)
-                combined_content += f"\n\n{topic_content}"
-
-            # Generate Q&A content using output directory from conversation config
-            random_filename = f"transcript_{uuid.uuid4().hex}.txt"
-            transcript_filepath = os.path.join(
-                output_directories.get("transcripts", "data/transcripts"),
-                random_filename,
+            if not pdf_urls:
+                logger.warning("No PDF files found in URLs. PodcastGenerator requires PDF input.")
+                return None
+                
+            # Initialize LLM backend
+            llm = LLMBackend(
+                is_local=is_local, 
+                temperature=conv_config.get("creativity", 0.5), 
+                max_output_tokens=conv_config.get("max_output_tokens", 2**15), 
+                model_name=model_name or "gemini-1.5-pro-latest", 
+                api_key_label=api_key_label or "GEMINI_API_KEY"
             )
-            qa_content = content_generator.generate_qa_content(
-                combined_content,
-                image_file_paths=image_paths or [],
-                output_filepath=transcript_filepath,
-                longform=longform
-            )
+            
+            # Using PodcastGenerator for PDF processing
+            logger.info(f"Processing PDF file: {pdf_urls[0]}")
+            template_reader = TemplateLoader()
+            # podcast_gen = PodcastGenerator(
+            #     pdf_urls[0], 
+            #     conv_config.to_dict(), 
+            #     llm, 
+            #     template_reader
+            # )
+            # 
+            # # Generate transcript with podcast generator
+            # random_filename = f"transcript_{uuid.uuid4().hex}.txt"
+            # transcript_filepath = os.path.join(transcripts_dir, random_filename)
+            # 
+            # qa_content = podcast_gen.gen_interview_transcript()
+            # 
+            # # Save transcript to file
+            # with open(transcript_filepath, "w") as f:
+            #     f.write(qa_content)
+            #     
+            # logger.info(f"Academic paper transcript generated: {transcript_filepath}")
+            # Read Transcript directly to troubleshoot audio generation with geminimulti
+            transcript_filepath="./projects/project_1/transcripts/transcript_5d2a28a9030d41dc8916261724aaa193.txt"
+            logger.info(f"Reading transcript from file: {transcript_filepath}")
+            try:
+                with open(transcript_filepath, "r") as f:
+                    qa_content = f.read()
+                transcript_filepath = transcript_filepath
+            except FileNotFoundError:
+                logger.error(f"Transcript file not found: {transcript_filepath}")
+                raise
+        
         # TODO: block audio generation for now, just testing prompt engineering
-        if generate_audio and False:
+        if generate_audio:
             api_key = None
+            print(f"Using TTS model: {tts_model}")
             if tts_model != "edge":
-                api_key = getattr(config, f"{tts_model.upper().replace('MULTI', '')}_API_KEY")
+                if tts_model == "googleneural2":
+                    api_key = config.GOOGLE_NEURAL2_API_KEY
+                else:
+                    api_key = getattr(config, f"{tts_model.upper().replace('MULTI', '')}_API_KEY")
 
             text_to_speech = TextToSpeech(
                 model=tts_model,
