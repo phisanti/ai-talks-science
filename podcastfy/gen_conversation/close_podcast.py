@@ -1,21 +1,30 @@
 import os
-from podcastfy.content_parser.content_extractor import PDFExtractor
 from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
 from podcastfy.content_generator import LLMBackend
-from podcastfy.template_reader import TemplateLoader
-import google.generativeai as genai
-
 from langchain.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from typing import List, Dict, Any
+from typing import Optional, Dict, Any, Union
 
-def close_podcast(config, instr, llm, paper_info = None):
+def close_podcast(
+    config: Dict[str, Any], 
+    instr: str, 
+    llm: LLMBackend, 
+    paper_info: Optional[Union[str, Dict[str, Any]]] = None
+) -> str:
     """
-    Generates an introduction based on paper information.
+    Generates a closing segment for a podcast based on paper information.
+    
+    Args:
+        config: Configuration dictionary containing podcast parameters
+        instr: Instructions for the closing generation
+        llm: LLM backend instance for text generation
+        paper_info: Paper information to use in the closing. If None, uses config['doctitle']
+    
+    Returns:
+        str: Generated closing text for the podcast
     """
     if paper_info is None:
-        paper_info = config['doctitle']
+        paper_info = config.get('doctitle', '...')
     # Create structured prompt
     prompt = ChatPromptTemplate.from_template("""
     PAPER INFORMATION:

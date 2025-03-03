@@ -1,19 +1,47 @@
+"""
+Question-Answer Session Generator Module.
+
+This module provides functionality to generate structured podcast Q&A conversations 
+from scientific paper content using LLM-based content generation. It handles the 
+extraction of key paper information and transforms it into natural dialogue.
+
+Security note: This module interfaces with external LLM APIs and should be used with
+proper API key management and rate limiting considerations.
+"""
 import os
 import time
 import random
-from podcastfy.content_parser.content_extractor import PDFExtractor, ContentExtractor
+from typing import Dict, Any
 from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
 from podcastfy.content_generator import LLMBackend
 from podcastfy.template_reader import TemplateLoader
-import google.generativeai as genai
 from langchain.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from typing import List, Dict, Any
 
-def generate_section_info(section_name: str, context: str, template_reader: TemplateLoader, llm: LLMBackend) -> Dict[str, Any]:
-    """Generate information for a specific section of the paper."""
+def generate_section_info(
+    section_name: str, 
+    context: str, 
+    template_reader: TemplateLoader, 
+    llm: LLMBackend
+) -> str:
+    """
+    Generate information for a specific section of the paper.
+    
+    Args:
+        section_name: Name of the paper section to process
+        context: Paper text or structured content
+        template_reader: Template reader for loading prompt templates
+        llm: Language model backend for generation
+        
+    Returns:
+        Structured information about the specified section
+        
+    Raises:
+        ValueError: If generation fails after multiple attempts
+    """
+
+    # Get section-specific instructions from template
     section_instr = template_reader.get_sections(
         "generate_qa", 
         [section_name, "TASK:", "REQUIREMENTS:"], 
@@ -27,9 +55,7 @@ def generate_section_info(section_name: str, context: str, template_reader: Temp
     
     CONVERSATION TEMPLATE:
     {section_instr}
-    """)
-    
-    # Create chain
+    """)    
     chain = prompt | llm.llm
     
     # Run with retries
@@ -54,11 +80,25 @@ def generate_section_info(section_name: str, context: str, template_reader: Temp
     raise ValueError(f"Failed to generate valid QA information for {section_name}")
 
 
-def generate_qainformation(context: str, 
-                           template_reader, 
-                           #conversation_config: Dict[str, Any], 
-                           llm: LLMBackend) -> Dict[str, Any]:
-    """Extracts content from paper and generates structured QA information."""
+def generate_qainformation(
+    context: str, 
+    template_reader: TemplateLoader,
+    llm: LLMBackend
+) -> Dict[str, str]:
+    """
+    Extract content from paper and generate structured QA information.
+    
+    Args:
+        context: Paper content to process
+        template_reader: Template loader for prompt templates
+        llm: Language model backend for generation
+        
+    Returns:
+        Dictionary mapping section names to generated QA content
+        
+    Raises:
+        ValueError: If no valid QA information could be generated
+    """
     
     # Define sections to process
     sections = [
@@ -84,17 +124,33 @@ def generate_qainformation(context: str,
     return combined_data
 
 
-
-def generate_qasession(qa_result: Dict[str, Any], qa_template, conversation_config: Dict[str, Any], llm: LLMBackend) -> Dict[str, Any]:
+def generate_qasession(
+    qa_result: Dict[str, str], 
+    qa_template: str,
+    conversation_config: Dict[str, Any], 
+    llm: LLMBackend
+) -> str:
+    """
+    Generate a complete Q&A session based on structured paper information.
     
+    Args:
+        qa_result: Dictionary of QA information by section
+        qa_template: Template for conversation structure
+        conversation_config: Configuration for conversation style
+        llm: Language model backend for generation
+        
+    Returns:
+        Formatted conversation text
+        
+    Raises:
+        ValueError: If conversation generation fails
+    """    
     # Extract conversation style and language from config
-
     conversation_style = conversation_config.get("style", "casual and informative")
     output_language = conversation_config.get("language", "English")
     person1_name = conversation_config.get("person1_name", "Interviewer")
     person2_name = conversation_config.get("person2_name", "Guest")
  
-    print(qa_template)
     # Create a prompt template for generating conversation segments
     conversation_prompt = ChatPromptTemplate.from_template("""
         QA INFORMATION:
@@ -114,7 +170,6 @@ def generate_qasession(qa_result: Dict[str, Any], qa_template, conversation_conf
         RunnablePassthrough() 
         | conversation_prompt 
         | llm.llm 
-        | StrOutputParser()
     )
     # Section order for a logical conversation flow
     section_order = ["background", "maincontributions", "limitations"]
@@ -166,8 +221,8 @@ def generate_qasession(qa_result: Dict[str, Any], qa_template, conversation_conf
                         raise
     
     # Combine all segments into a coherent conversation
-    #if not conversation_segments:
-    #    raise ValueError("Failed to generate any conversation segments")
+    if not conversation_segments:
+        raise ValueError("Failed to generate any conversation segments")
     
     # Join segments, ensuring smooth transitions
     full_conversation = "\n\n".join(conversation_segments)

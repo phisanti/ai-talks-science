@@ -76,10 +76,6 @@ class TemplateLoader:
         formatted = ' '.join(formatted.split())
         formatted = formatted.strip()
         
-        # Add clear section markers
-        #if formatted:
-        #    formatted = f"### Instructions ###\n{formatted}\n### End Instructions ###"
-            
         return formatted
 
     def get_sections(self, template_name: str, section_markers: List[str], remove_hashtags: bool = False) -> str:
