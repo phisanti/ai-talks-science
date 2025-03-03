@@ -19,10 +19,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain import hub
 from podcastfy.utils.config_conversation import load_conversation_config
 from podcastfy.utils.config import load_config
-from podcastfy.template_reader import TemplateLoader
 import logging
 from langchain.prompts import HumanMessagePromptTemplate
-from langchain_core.messages import SystemMessage 
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger(__name__)
@@ -113,7 +111,6 @@ class LongFormContentGenerator:
         self.llm = llm
         self.max_num_chunks = config_conversation.get("max_num_chunks", 10)  # Default if not in config
         self.min_chunk_size = config_conversation.get("min_chunk_size", 200)  # Default if not in config
-        self.template_reader = TemplateLoader() 
 
     def __calculate_chunk_size(self, input_content: str) -> int:
         """
@@ -188,15 +185,30 @@ class LongFormContentGenerator:
 		# Initialize part_instructions with chat context
         enhanced_params["context"] = chat_context
         
-        COMMON_INSTRUCTIONS  = self.template_reader.get_template("./podcastfy/configs/common_instructions.md")
+        COMMON_INSTRUCTIONS = """
+            Podcast conversation so far is given in CONTEXT.
+            Continue the natural flow of conversation. Follow-up on the very previous point/question without repeating topics or points already discussed!
+            Hence, the transition should be smooth and natural. Avoid abrupt transitions.
+            Make sure the first to speak is different from the previous speaker. Look at the last tag in CONTEXT to determine the previous speaker. 
+            If last tag in CONTEXT is <Person1>, then the first to speak now should be <Person2>.
+            If last tag in CONTEXT is <Person2>, then the first to speak now should be <Person1>.
+            This is a live conversation without any breaks.
+            Hence, avoid statemeents such as "we'll discuss after a short break.  Stay tuned" or "Okay, so, picking up where we left off".
+        """ 
 
         # Add part-specific instructions
         if part_idx == 0:
-            instructions = self.template_reader.get_template("./podcastfy/configs/instructions_introduction.md")
-            enhanced_params["instruction"] = self.template_reader.fill_template(instructions, enhanced_params)
+            enhanced_params["instruction"] = f"""
+            ALWAYS START THE CONVERSATION GREETING THE AUDIENCE: Welcome to {enhanced_params["podcast_name"]} - {enhanced_params["podcast_tagline"]}.
+            You are generating the Introduction part of a long podcast conversation.
+            Don't cover any topics yet, just introduce yourself and the topic. Leave the rest for later parts, following these guidelines:
+            """
         elif part_idx == total_parts - 1:
-            instructions = self.template_reader.get_template("./podcastfy/configs/instructions_end.md")
-            enhanced_params["instruction"] = self.template_reader.fill_template(instructions, {"COMMON_INSTRUCTIONS" : COMMON_INSTRUCTIONS})
+            enhanced_params["instruction"] = f"""
+            You are generating the last part of a long podcast conversation. 
+            {COMMON_INSTRUCTIONS}
+            For this part, discuss the below INPUT and then make concluding remarks in a podcast conversation format and END THE CONVERSATION GREETING THE AUDIENCE WITH PERSON1 ALSO SAYING A GOOD BYE MESSAGE, following these guidelines:
+            """
         else:
             enhanced_params["instruction"] = f"""
             You are generating part {part_idx+1} of {total_parts} parts of a long podcast conversation.
@@ -241,13 +253,15 @@ class LongFormContentGenerator:
                 chat_context=chat_context
             )
             enhanced_params["input_text"] = chunk
-            response = 'debbuging'
-            #response = self.llm_chain.invoke(enhanced_params)
+            response = self.llm_chain.invoke(enhanced_params)
             if i == 0:
                 chat_context = response
             else:
                 chat_context = chat_context + response
             print(f"Generated part {i+1}/{num_parts}: Size {len(chunk)} characters.")
+            #print(f"[LLM-START] Step: {i+1} ##############################")
+            #print(response)
+            #print(f"[LLM-END] Step: {i+1} ##############################")
             conversation_parts.append(response)
 
         return self.stitch_conversations(conversation_parts)
@@ -611,7 +625,7 @@ class ContentGenerator:
     def __init__(
         self, 
         is_local: bool=False, 
-        model_name: str="gemini-1.5-flash-latest", 
+        model_name: str="gemini-1.5-pro-latest", 
         api_key_label: str="GEMINI_API_KEY",
         conversation_config: Optional[Dict[str, Any]] = None
     ):
@@ -650,7 +664,7 @@ class ContentGenerator:
             is_local=is_local,
             temperature=self.config_conversation.get("creativity", 1),
             max_output_tokens=self.content_generator_config.get(
-                "max_output_tokens", 2**20
+                "max_output_tokens", 8192
             ),
             model_name=model_name,
             api_key_label=api_key_label,
@@ -674,19 +688,25 @@ class ContentGenerator:
             )
         }
 
-        self.read_template = TemplateLoader()
-
     def __compose_prompt(self, num_images: int, longform: bool=False):
         """
         Compose the prompt for the LLM based on the content list.
         """
+        content_generator_config = self.config.get("content_generator", {})
         
-        # Load base prompt template
-        template_path = self.content_generator_config.get("prompt_template_path")
-        template_content = self.read_template.get_template(template_path)
-        prompt_template = ChatPromptTemplate.from_messages([
-            SystemMessage(content=template_content)
-            ])
+        # Get base template and commit values
+        base_template = content_generator_config.get("prompt_template")
+        base_commit = content_generator_config.get("prompt_commit")
+        
+        # Modify template and commit for longform if configured
+        if longform:
+            template = content_generator_config.get("longform_prompt_template")
+            commit = content_generator_config.get("longform_prompt_commit")
+        else:
+            template = base_template
+            commit = base_commit
+
+        prompt_template = hub.pull(f"{template}:{commit}")
 
         image_path_keys = []
         messages = []
@@ -710,8 +730,8 @@ class ContentGenerator:
         user_prompt_template = ChatPromptTemplate.from_messages(
             messages=[HumanMessagePromptTemplate.from_template(messages)]
         )
+        user_instructions = self.config_conversation.get("user_instructions", "")
 
-        user_instructions = self.read_template.get_template(self.config_conversation.get("user_instructions", ""))
         user_instructions = (
             "[[MAKE SURE TO FOLLOW THESE INSTRUCTIONS OVERRIDING THE PROMPT TEMPLATE IN CASE OF CONFLICT: "
             + user_instructions
@@ -719,7 +739,7 @@ class ContentGenerator:
         )
 
         new_system_message = (
-            prompt_template.messages[0] + "\n" + user_instructions
+            prompt_template.messages[0].prompt.template + "\n" + user_instructions
         )
 
         # Compose messages from podcastfy_prompt_template and user_prompt_template
@@ -781,11 +801,6 @@ class ContentGenerator:
                 input_texts
             )
 
-            with open('./projects/project_1/prompt_params.txt', 'w') as f:
-                f.write(f"Prompt params: {prompt_params}")
-
-            with open('./projects/project_1/prompt_template.txt', 'w') as f:
-                f.write(f"Prompt template: {self.prompt_template}")
             # Generate content using selected strategy
             self.response = strategy.generate(
                 self.chain,
