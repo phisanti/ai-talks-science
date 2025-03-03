@@ -102,36 +102,25 @@ def process_content(
             # Using PodcastGenerator for PDF processing
             logger.info(f"Processing PDF file: {pdf_urls[0]}")
             template_reader = TemplateLoader()
-            # podcast_gen = PodcastGenerator(
-            #     pdf_urls[0], 
-            #     conv_config.to_dict(), 
-            #     llm, 
-            #     template_reader
-            # )
-            # 
-            # # Generate transcript with podcast generator
-            # random_filename = f"transcript_{uuid.uuid4().hex}.txt"
-            # transcript_filepath = os.path.join(transcripts_dir, random_filename)
-            # 
-            # qa_content = podcast_gen.gen_interview_transcript()
-            # 
-            # # Save transcript to file
-            # with open(transcript_filepath, "w") as f:
-            #     f.write(qa_content)
-            #     
-            # logger.info(f"Academic paper transcript generated: {transcript_filepath}")
-            # Read Transcript directly to troubleshoot audio generation with geminimulti
-            transcript_filepath="./projects/project_1/transcripts/transcript_5d2a28a9030d41dc8916261724aaa193.txt"
-            logger.info(f"Reading transcript from file: {transcript_filepath}")
-            try:
-                with open(transcript_filepath, "r") as f:
-                    qa_content = f.read()
-                transcript_filepath = transcript_filepath
-            except FileNotFoundError:
-                logger.error(f"Transcript file not found: {transcript_filepath}")
-                raise
+            podcast_gen = PodcastGenerator(
+                pdf_urls[0], 
+                conv_config.to_dict(), 
+                llm, 
+                template_reader
+            )
+            
+            # Generate transcript with podcast generator
+            random_filename = f"transcript_{uuid.uuid4().hex}.txt"
+            transcript_filepath = os.path.join(transcripts_dir, random_filename)
+            
+            qa_content = podcast_gen.gen_interview_transcript()
+            
+            # Save transcript to file
+            with open(transcript_filepath, "w") as f:
+                f.write(qa_content)
+                
+            logger.info(f"Academic paper transcript generated: {transcript_filepath}")
         
-        # TODO: block audio generation for now, just testing prompt engineering
         if generate_audio:
             api_key = None
             print(f"Using TTS model: {tts_model}")
