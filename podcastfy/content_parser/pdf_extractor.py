@@ -42,6 +42,26 @@ class PDFExtractor:
 			logger.error(f"Error extracting PDF content: {str(e)}")
 			raise
 	
+	def extract_page1(self, file_path: str) -> str:
+		"""
+		Extract text content from the first page of a PDF file.
+		
+		Args:
+			file_path (str): Path to the PDF file.
+			remove_refs (bool): Whether to remove references from the content.
+			
+		Returns:
+			str: Extracted text content from the first page.
+		"""
+		try:
+			doc = pymupdf.open(file_path)
+			content = doc.load_page(0).get_text()
+			doc.close()
+
+			return content
+		except Exception as e:
+			logger.error(f"Error extracting first page content: {str(e)}")
+			raise
 	def _ref_cleaner(self, text: str) -> str:
 		"""
 		Remove references and bibliography sections from the text.
