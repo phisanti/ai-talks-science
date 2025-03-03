@@ -259,9 +259,6 @@ class LongFormContentGenerator:
             else:
                 chat_context = chat_context + response
             print(f"Generated part {i+1}/{num_parts}: Size {len(chunk)} characters.")
-            #print(f"[LLM-START] Step: {i+1} ##############################")
-            #print(response)
-            #print(f"[LLM-END] Step: {i+1} ##############################")
             conversation_parts.append(response)
 
         return self.stitch_conversations(conversation_parts)
