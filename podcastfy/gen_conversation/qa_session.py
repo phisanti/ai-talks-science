@@ -18,7 +18,7 @@ from podcastfy.content_generator import LLMBackend
 from podcastfy.template_reader import TemplateLoader
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-
+from langchain_core.output_parsers import StrOutputParser
 def generate_section_info(
     section_name: str, 
     context: str, 
@@ -167,9 +167,9 @@ def generate_qasession(
     
     # Create the conversation generation chain
     conversation_chain = (
-        RunnablePassthrough() 
-        | conversation_prompt 
+        conversation_prompt 
         | llm.llm 
+        | StrOutputParser()
     )
     # Section order for a logical conversation flow
     section_order = ["background", "maincontributions", "limitations"]
