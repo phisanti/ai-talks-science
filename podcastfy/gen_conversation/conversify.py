@@ -297,13 +297,8 @@ class PodcastGenerator:
             "closing": closing_segment
         })
 
-        print("Transcripts before cleaning")
-        print(combined_segments)
-        print()
         if clean_transcript:
             combined_segments=self.clean_transcript(combined_segments)
-        print("Transcripts after cleaning")
-        print(combined_segments)
         return combined_segments
 
 if __name__ == "__main__":
