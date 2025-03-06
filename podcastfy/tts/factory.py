@@ -7,8 +7,8 @@ from .providers.openai import OpenAITTS
 from .providers.edge import EdgeTTS
 from .providers.gemini import GeminiTTS
 from .providers.geminimulti import GeminiMultiTTS
-from .providers.google_neural2 import GoogleNeural2TTS  # Add this import
-
+from .providers.google_neural2 import GoogleNeural2TTS  
+from .providers.kokoro import KokoroTTS  
 class TTSProviderFactory:
     """Factory class for creating TTS providers."""
     
@@ -18,7 +18,8 @@ class TTSProviderFactory:
         'edge': EdgeTTS,
         'gemini': GeminiTTS,
         'geminimulti': GeminiMultiTTS,
-        'googleneural2': GoogleNeural2TTS
+        'googleneural2': GoogleNeural2TTS,
+        'kokoro': KokoroTTS,
 
     }
     

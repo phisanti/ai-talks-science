@@ -23,16 +23,6 @@ import copy
 import logging
 
 # Configure logging to show all levels and write to both file and console
-""" logging.basicConfig(
-    level=logging.DEBUG,  # Show all levels of logs
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('podcastfy.log'),  # Save to file
-        logging.StreamHandler()  # Print to console
-    ]
-) """
-
-
 logger = setup_logger(__name__)
 
 app = typer.Typer()
@@ -52,8 +42,6 @@ def process_content(
     text: Optional[str] = None,
     model_name: Optional[str] = None,
     api_key_label: Optional[str] = None,
-    topic: Optional[str] = None,
-    longform: bool = False
 ):
     """
     Process URLs, a transcript file, image paths, or raw text to generate a podcast or transcript.
@@ -95,7 +83,7 @@ def process_content(
                 is_local=is_local, 
                 temperature=conv_config.get("creativity", 0.5), 
                 max_output_tokens=conv_config.get("max_output_tokens", 2**15), 
-                model_name=model_name or "gemini-1.5-pro-latest", 
+                model_name=model_name or "gemini-2.0-flash", 
                 api_key_label=api_key_label or "GEMINI_API_KEY"
             )
             
@@ -124,7 +112,7 @@ def process_content(
         if generate_audio:
             api_key = None
             print(f"Using TTS model: {tts_model}")
-            if tts_model != "edge":
+            if tts_model != "edge" and tts_model != "kokoro":
                 if tts_model == "googleneural2":
                     api_key = config.GOOGLE_NEURAL2_API_KEY
                 else:
