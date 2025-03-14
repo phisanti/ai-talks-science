@@ -111,7 +111,6 @@ def process_content(
         
         if generate_audio:
             api_key = None
-            print(f"Using TTS model: {tts_model}")
             if tts_model != "edge" and tts_model != "kokoro":
                 if tts_model == "googleneural2":
                     api_key = config.GOOGLE_NEURAL2_API_KEY
