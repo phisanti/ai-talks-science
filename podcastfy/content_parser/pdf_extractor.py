@@ -65,6 +65,8 @@ class PDFExtractor:
 	def _ref_cleaner(self, text: str) -> str:
 		"""
 		Remove references and bibliography sections from the text.
+		Only searches for references in the lower half of the document.
+		The aim is to reduce the context for the LLM.
 		
 		Args:
 			text (str): Input text to clean
@@ -85,16 +87,22 @@ class PDFExtractor:
 			r'(?:^|\n)\s*Works cited\b[:\s\n]'
 		]
 		
-		# Find the first occurrence of any reference section
-		min_pos = len(text)
+		# For safert: only look in the lower half of the document
+		half_length = len(text) // 2
+		lower_half = text[half_length:]
+		
+		# Find the first occurrence of any reference section in the lower half
+		min_pos = len(lower_half)
 		for pattern in ref_patterns:
-			match = re.search(pattern, text, re.IGNORECASE)
+			match = re.search(pattern, lower_half, re.IGNORECASE)
 			if match and match.start() < min_pos:
 				min_pos = match.start()
 		
-		# Return text up to the reference section
-		return text[:min_pos].strip()
-
+		# If reference section found in lower half, return text up to that point
+		if min_pos < len(lower_half):
+			return text[:half_length + min_pos].strip()
+		
+		# If no reference section found in lower half, return the full text
 
 def main(seed: int = 42) -> None:
 	"""
