@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List
 from podcastfy.content_parser.content_extractor import ContentExtractor
 from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
+from podcastfy.utils.utils import format_podcast_duration
 from podcastfy.content_generator import LLMBackend
 from podcastfy.template_reader import TemplateLoader
 from podcastfy.gen_conversation.introduction import extract_info, generate_introduction
@@ -174,6 +175,12 @@ class PodcastGenerator:
         
         # Initialize extractors
         self.content_extractor = ContentExtractor()
+        
+        # Format podcast duration for each segment
+        if 'duration' in self.config:
+            self.config['introduction_duration'] = format_podcast_duration(self.config['duration'], segment="introduction")
+            self.config['qa_duration'] = format_podcast_duration(self.config['duration'], segment="discussion")
+            self.config['conclusion_duration'] = format_podcast_duration(self.config['duration'], segment="conclusion")
         
         # Load templates
         common_instructions=self.template_reader.get_template("podcastfy/configs/common_instructions.md")
