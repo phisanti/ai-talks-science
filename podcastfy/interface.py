@@ -104,25 +104,29 @@ def generate_podcast(project_path, pdf_path, config_path, base_config_path, mode
     except Exception as e:
         return f"Error generating podcast: {str(e)}", None
 
-def update_config_preview(output_language, podcast_name, doctitle, person1_name, person2_name, 
+def get_voice(selected_voice, tts_model):
+    if tts_model == "google_neural2":
+        for voice_key, voice_data in GOOGLE_VOICES.items():
+            if voice_data["display"] == selected_voice:
+                return voice_key
+    else:
+        for voice_key, voice_data in KOKORO_VOICES.items():
+            if voice_data["display"] == selected_voice:
+                return voice_key
+    return selected_voice    
+
+def update_config_preview(output_language, podcast_name, podcast_tagline, doctitle, person1_name, person2_name, 
                          host_role, guest_role, conversation_style, dialogue_structure, 
                          engagement_techniques, creativity, max_num_chunks, min_chunk_size,
-                         tts_model, host_voice, guest_voice, audio_format, ending_message):
-    # Extract voice names from dropdown selections
-    if "(" in host_voice:
-        host_voice_name = host_voice.split(" (")[0]
-    else:
-        host_voice_name = host_voice.split(" ")[0]
-        
-    if "(" in guest_voice:
-        guest_voice_name = guest_voice.split(" (")[0]
-    else:
-        guest_voice_name = guest_voice.split(" ")[0]
+                         podcast_duration, tts_model, host_voice, guest_voice, audio_format, ending_message):
+    
+    # Extract duration in minutes as an integer
+    duration_minutes = podcast_duration
     
     config_data = {
         "output_language": output_language,
         "podcast_name": podcast_name,
-        "podcast_tagline": f"Where {host_role} discusses with {guest_role}",
+        "podcast_tagline": podcast_tagline,
         "roles_person1": host_role,
         "roles_person2": guest_role,
         "person1_name": person1_name,
@@ -134,6 +138,7 @@ def update_config_preview(output_language, podcast_name, doctitle, person1_name,
         "creativity": float(creativity),
         "max_num_chunks": int(max_num_chunks),
         "min_chunk_size": int(min_chunk_size),
+        "duration": duration_minutes,
         "text_to_speech": {
             "default_tts_model": tts_model,
             "output_directories": {
@@ -142,8 +147,8 @@ def update_config_preview(output_language, podcast_name, doctitle, person1_name,
             },
             tts_model: {
                 "default_voices": {
-                    "question": host_voice_name,
-                    "answer": guest_voice_name
+                    "question": get_voice(host_voice, tts_model),
+                    "answer": get_voice(guest_voice, tts_model),
                 }
             },
             "audio_format": audio_format,
