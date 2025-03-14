@@ -103,6 +103,8 @@ class PDFExtractor:
 			return text[:half_length + min_pos].strip()
 		
 		# If no reference section found in lower half, return the full text
+		return text
+
 
 def main(seed: int = 42) -> None:
 	"""
