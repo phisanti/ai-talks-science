@@ -1,6 +1,9 @@
-from typing import Optional, Dict, Union
 import re
-
+import time
+import random
+import functools
+import logging
+from typing import Callable, Optional, Any, List, Union, Dict
 
 def format_podcast_duration(duration_str: str, segment: Optional[str] = None) -> str:
     """
@@ -137,3 +140,118 @@ def format_podcast_duration(duration_str: str, segment: Optional[str] = None) ->
         f"{hard_constraint_msg} {extra_info}"
     )
 
+
+def convert_template_to_xml(template_text: str) -> str:
+    """
+    Convert a prompt template organised as SECTION: instructions into XML format.
+    as <section>instructions</section>
+    
+    Args:
+        template_text: The template text to convert.
+    
+    Returns:
+        The template text converted to XML format.
+    """
+    lines = template_text.strip().split('\n')
+    xml_parts = []
+    current_section = None
+    current_content = []
+    
+    for line in lines:
+        # Check if this line is a section header
+        if ':' in line and line.split(':')[0].isupper() and line.split(':')[0].isalpha():
+            # If we have a current section, add it to the XML
+            if current_section:
+                xml_parts.append(f"<{current_section.lower()}>{' '.join(current_content)}</{current_section.lower()}>")
+                current_content = []
+            
+            # Start a new section
+            current_section = line.split(':')[0]
+            # Add any content after the colon to the new section
+            remaining_content = line.split(':', 1)[1].strip()
+            if remaining_content:
+                current_content.append(remaining_content)
+        elif current_section:
+            # Add content to the current section
+            current_content.append(line.strip())
+    
+    # Add the last section if there is one
+    if current_section:
+        xml_parts.append(f"<{current_section.lower()}>{' '.join(current_content)}</{current_section.lower()}>")
+    
+    return "\n".join(xml_parts)
+
+
+def retry_with_exponential_backoff(
+    max_retries: int = 3,
+    base_wait_time: int = 10,
+    rate_limit_terms: Optional[List[str]] = None
+) -> Callable:
+    """
+    Decorator for retrying calls to the API with exponential backoff to deal with rate limiting.
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        base_wait_time: Initial wait time in seconds
+        rate_limit_terms: List of terms that indicate rate limiting in error messages
+    """
+    if rate_limit_terms is None:
+        rate_limit_terms = ["rate limit", "ratelimit", "too many requests", "429", "quota exceeded", "throttle"]
+        
+    def decorator(func: Callable) -> Callable:
+        logger = logging.getLogger(func.__module__)
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> Any:
+            retry_count = 0
+            
+            while retry_count < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    retry_count += 1
+                    error_msg = str(e).lower()
+                    
+                    # Check if it's likely a rate limit error
+                    is_rate_limit = any(term in error_msg for term in rate_limit_terms)
+                    
+                    if is_rate_limit or retry_count < max_retries:
+                        # Exponential backoff with jitter
+                        wait_time = base_wait_time * (2 ** (retry_count - 1)) + random.uniform(1, 5)
+                        if logger:
+                            logger.warning(f"Rate limit reached or error occurred. Waiting {wait_time:.2f} seconds before retry {retry_count}/{max_retries}...")
+                        else:
+                            print(f"Rate limit reached or error occurred. Waiting {wait_time:.2f} seconds before retry {retry_count}/{max_retries}...")
+                        time.sleep(wait_time)
+                    else:
+                        print(f"Error after {max_retries} retries: {str(e)}")
+                        raise
+            
+            raise Exception(f"Failed after {max_retries} retries")
+        
+        return wrapper
+    
+    return decorator
+
+
+@retry_with_exponential_backoff(max_retries=3, base_wait_time=10)
+def invoke_with_retry(llm, inputs: Dict[str, Any]):
+    """
+    Invoke an LLM with retry logic for handling rate limits and transient errors.
+    
+    Args:
+        llm: The language model or chain to invoke
+        inputs: Dictionary of parameters to pass to the invoke method
+        
+    Returns:
+        The result of the LLM invocation
+        
+    Raises:
+        Exception: If all retry attempts fail
+    """
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Invoking LLM with parameters: {inputs.keys()}")
+    
+    result = llm.invoke(inputs)
+    logger.debug(f"LLM invocation successful")
+    logger.debug(f'Result: {result.content}')
+    return result

@@ -18,6 +18,7 @@ from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
 from podcastfy.content_generator import LLMBackend
 from podcastfy.template_reader import TemplateLoader
+from podcastfy.utils.utils import invoke_with_retry
 
 
 def extract_info(file_path: str, llm: LLMBackend) -> str:
@@ -36,6 +37,10 @@ def extract_info(file_path: str, llm: LLMBackend) -> str:
         
     Raises:
         ValueError: If PDF extraction fails or content cannot be processed
+        
+    Note:
+        Uses invoke_with_retry for automatic retry with exponential backoff
+        to handle rate limiting and transient errors.
     """
     try:    
         # Get PDF content
@@ -63,7 +68,7 @@ def extract_info(file_path: str, llm: LLMBackend) -> str:
         chain = prompt | llm.llm
         
         # Run chain with proper input format
-        result = chain.invoke({"content": content})
+        result = invoke_with_retry(chain, {"content": content})
         
         return result.content
     
@@ -114,7 +119,7 @@ def generate_introduction(
         "output_language": config.get("output_language", "English")
     }
     
-    result = chain.invoke(inputs)
+    result = invoke_with_retry(chain, inputs)
     return result.content
 
 if __name__ == "__main__":

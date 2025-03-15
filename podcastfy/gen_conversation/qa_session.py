@@ -11,14 +11,21 @@ proper API key management and rate limiting considerations.
 import os
 import time
 import random
+import logging
 from typing import Dict, Any
 from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
 from podcastfy.content_generator import LLMBackend
 from podcastfy.template_reader import TemplateLoader
+from podcastfy.utils.utils import invoke_with_retry
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+
+
+logger = logging.getLogger(__name__)
+
+
 def generate_section_info(
     section_name: str, 
     context: str, 
@@ -36,9 +43,13 @@ def generate_section_info(
         
     Returns:
         Structured information about the specified section
-        
+    
     Raises:
         ValueError: If generation fails after multiple attempts
+        
+    Note:
+        Uses invoke_with_retry for automatic retry with exponential backoff
+        to handle rate limiting and transient errors.
     """
 
     # Get section-specific instructions from template
@@ -57,28 +68,13 @@ def generate_section_info(
     {section_instr}
     """)    
     chain = prompt | llm.llm
-    
-    # Run with retries
-    max_attempts = 3
-    attempts = 0
-    
-    while attempts < max_attempts:
-        try:
-            # Invoke chain
-            result = chain.invoke({
-                "context": context,
-                "section_instr": section_instr
-            })
-            return result.content
-            
-        except Exception as e:
-            attempts += 1
-            print(f"Attempt {attempts} failed for {section_name}: {str(e)}")
-            if attempts >= max_attempts:
-                raise ValueError(f"Failed to generate valid QA information for {section_name} after {max_attempts} attempts: {e}")
-    
-    raise ValueError(f"Failed to generate valid QA information for {section_name}")
 
+    try:
+        result = invoke_with_retry(chain, {"context": context, 
+                                           "section_instr": section_instr})
+        return result.content
+    except Exception as e:
+        raise ValueError(f"Failed to generate valid QA information for {section_name}: {str(e)}")
 
 def generate_qainformation(
     context: str, 
@@ -143,8 +139,13 @@ def generate_qasession(
         Formatted conversation text
         
     Raises:
-        ValueError: If conversation generation fails
-    """    
+        ValueError: If generation fails after multiple attempts
+        
+    Note:
+        Uses invoke_with_retry for automatic retry with exponential backoff
+        to handle rate limiting and transient errors. Includes small delays
+        between sections to avoid rate limiting.
+    """
     # Extract conversation style and language from config
     conversation_style = conversation_config.get("style", "casual and informative")
     output_language = conversation_config.get("language", "English")
@@ -179,46 +180,25 @@ def generate_qasession(
     for section_name in section_order:
         if section_name in qa_result:
             # Retry logic for rate limiting
-            max_retries = 3
-            retry_count = 0
-            base_wait_time = 10  # seconds
-            
-            while retry_count < max_retries:
-                try:
-                    segment = conversation_chain.invoke({
-                        "section_content": qa_result[section_name],
-                        "section_name": section_name.capitalize(),
-                        "qa_template": qa_template,
-                        "conversation_style": conversation_style,
-                        "output_language": output_language,
-                        "person1_name": person1_name,
-                        "person2_name": person2_name
-                    })
-                    conversation_segments.append(segment)
+            try:
+                segment = invoke_with_retry(conversation_chain, {
+                    "section_content": qa_result[section_name],
+                    "section_name": section_name.capitalize(),
+                    "qa_template": qa_template,
+                    "conversation_style": conversation_style,
+                    "output_language": output_language,
+                    "person1_name": person1_name,
+                    "person2_name": person2_name
+                })
+                conversation_segments.append(segment)
+                
+                # Add a small delay between sections to avoid rate limiting
+                if section_name != section_order[-1]:
+                    time.sleep(2 + random.random())
                     
-                    # Add a small delay between sections to avoid rate limiting
-                    if section_name != section_order[-1]:
-                        time.sleep(2 + random.random())
-                    
-                    break  # Success, exit retry loop
-                    
-                except Exception as e:
-                    retry_count += 1
-                    error_msg = str(e).lower()
-                    
-                    # Check if it's likely a rate limit error
-                    is_rate_limit = any(term in error_msg for term in 
-                                       ["rate limit", "ratelimit", "too many requests", 
-                                        "429", "quota exceeded", "throttle"])
-                    
-                    if is_rate_limit or retry_count < max_retries:
-                        # Exponential backoff with jitter
-                        wait_time = base_wait_time * (2 ** (retry_count - 1)) + random.uniform(1, 5)
-                        print(f"Rate limit reached or error occurred. Waiting {wait_time:.2f} seconds before retry {retry_count}/{max_retries}...")
-                        time.sleep(wait_time)
-                    else:
-                        print(f"Error generating conversation for section {section_name}: {str(e)}")
-                        raise
+            except Exception as e:
+                logger.error(f"Error generating conversation for section {section_name}: {str(e)}")
+                raise
     
     # Combine all segments into a coherent conversation
     if not conversation_segments:
