@@ -16,7 +16,7 @@ from langchain.prompts import ChatPromptTemplate
 from podcastfy.content_parser.content_extractor import PDFExtractor
 from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
-from podcastfy.content_generator import LLMBackend
+from podcastfy.llbackend import LLMBackend
 from podcastfy.template_reader import TemplateLoader
 from podcastfy.utils.utils import invoke_with_retry
 

@@ -2,7 +2,7 @@ import os
 from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
 from podcastfy.utils.utils import invoke_with_retry
-from podcastfy.content_generator import LLMBackend
+from podcastfy.llbackend import LLMBackend
 from langchain.prompts import ChatPromptTemplate
 from typing import Optional, Dict, Any, Union
 

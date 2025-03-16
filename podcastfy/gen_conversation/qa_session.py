@@ -15,7 +15,7 @@ import logging
 from typing import Dict, Any
 from podcastfy.utils.config import Config
 from podcastfy.utils.config_conversation import ConversationConfig
-from podcastfy.content_generator import LLMBackend
+from podcastfy.llbackend import LLMBackend
 from podcastfy.template_reader import TemplateLoader
 from podcastfy.utils.utils import invoke_with_retry
 from langchain.prompts import ChatPromptTemplate
@@ -170,7 +170,6 @@ def generate_qasession(
     conversation_chain = (
         conversation_prompt 
         | llm.llm 
-        | StrOutputParser()
     )
     # Section order for a logical conversation flow
     section_order = ["background", "maincontributions", "limitations"]
@@ -190,7 +189,7 @@ def generate_qasession(
                     "person1_name": person1_name,
                     "person2_name": person2_name
                 })
-                conversation_segments.append(segment)
+                conversation_segments.append(segment.content)
                 
                 # Add a small delay between sections to avoid rate limiting
                 if section_name != section_order[-1]:

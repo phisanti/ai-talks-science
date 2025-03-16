@@ -16,7 +16,7 @@ from podcastfy.text_to_speech import TextToSpeech
 from podcastfy.utils.config import Config, load_config
 from podcastfy.utils.config_conversation import load_conversation_config, ConversationConfig
 from podcastfy.utils.logger import setup_logger
-from podcastfy.content_generator import LLMBackend
+from podcastfy.llbackend import LLMBackend
 from typing import List, Optional, Dict, Any
 import copy
 
