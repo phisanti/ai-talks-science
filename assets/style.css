@@ -1,0 +1,101 @@
+/* Main container styling */
+.gradio-container {
+    font-family: 'Roboto', sans-serif;
+    max-width: 100% !important; 
+    min-width: var(--size-full) !important;
+    margin: 0 auto;
+    padding: 0 20px; 
+}
+
+/* Header styling */
+.main-header {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    font-size: 2.5rem;
+    font-weight: bold;
+    padding: 1rem;
+    background: linear-gradient(to right, #3498db, #2ecc71);
+    color: white;
+    border-radius: 8px;
+}
+
+/* Tab styling */
+.tab-content {
+    padding: 1.5rem;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Button styling */
+.action-btn {
+    background-color: #3498db !important;
+    color: white !important;
+    border-radius: 4px !important;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.action-btn:hover {
+    background-color: #2980b9 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.primary-btn {
+    background-color: #2ecc71 !important;
+    color: white !important;
+    border-radius: 4px !important;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.primary-btn:hover {
+    background-color: #27ae60 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Group styling */
+.gradio-group {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    background-color: white;
+}
+
+/* Projects list styling */
+.projects-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+.projects-list li {
+    padding: 0.8rem;
+    margin-bottom: 0.5rem;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.projects-list li:hover {
+    background-color: #e0e0e0;
+}
+
+.projects-list a {
+    color: #3498db;
+    text-decoration: none;
+    display: block;
+}
+
+/* Footer styling */
+.footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    border-top: 1px solid #ecf0f1;
+}

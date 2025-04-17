@@ -105,32 +105,143 @@ class PDFExtractor:
 		# If no reference section found in lower half, return the full text
 		return text
 
+	def extract_figure(self, file_path: str, figure_number: int = 0) -> str:
+		"""
+		Extract a specific figure from a PDF file and save it as JPEG.
+		
+		Args:
+			file_path (str): Path to the PDF file.
+			figure_number (int): Index of the figure to extract (0-based).
+			
+		Returns:
+			str: Path to the saved figure image.
+		"""
+		try:
+			doc = pymupdf.open(file_path)
+			output_dir = os.path.dirname(file_path)
+			output_path = os.path.join(output_dir, f"jpeg_{figure_number}.jpg")
+			
+			image_count = 0
+			for page_num in range(len(doc)):
+				page = doc.load_page(page_num)
+				image_list = page.get_images(full=True)
+				
+				for img_index, img in enumerate(image_list):
+					if image_count == figure_number:
+						xref = img[0]
+						base_image = doc.extract_image(xref)
+						image_bytes = base_image["image"]
+						
+						with open(output_path, "wb") as f:
+							f.write(image_bytes)
+						
+						logger.info(f"Saved figure {figure_number} to {output_path}")
+						return output_path
+					
+					image_count += 1
+			
+			logger.warning(f"Figure {figure_number} not found in document")
+			return ""
+		except Exception as e:
+			logger.error(f"Error extracting figure: {str(e)}")
+			raise
 
-def main(seed: int = 42) -> None:
+	def extract_all_figures(self, file_path: str) -> dict:
+		"""
+		Extract all figures from a PDF file and save them as JPEGs.
+		
+		Args:
+			file_path (str): Path to the PDF file.
+			
+		Returns:
+			dict: Dictionary mapping figure numbers to file paths.
+		"""
+		try:
+			doc = pymupdf.open(file_path)
+			output_dir = os.path.dirname(file_path)
+			figures = {}
+			
+			image_count = 0
+			for page_num in range(len(doc)):
+				page = doc.load_page(page_num)
+				image_list = page.get_images(full=True)
+				
+				for img_index, img in enumerate(image_list):
+					xref = img[0]
+					base_image = doc.extract_image(xref)
+					image_bytes = base_image["image"]
+					
+					output_path = os.path.join(output_dir, f"jpeg_{image_count}.jpg")
+					with open(output_path, "wb") as f:
+						f.write(image_bytes)
+					
+					figures[image_count] = output_path
+					image_count += 1
+			
+			logger.info(f"Extracted {image_count} figures from {file_path}")
+			return figures
+		except Exception as e:
+			logger.error(f"Error extracting figures: {str(e)}")
+			raise
+
+
+def main(test: str, seed: int = 42) -> None:
 	"""
 	Test the PDFExtractor class with a specific PDF file.
 
 	Args:
 		seed (int): Random seed for reproducibility. Defaults to 42.
 	"""
-	# Set the random seed
-	import random
-	random.seed(seed)
+	if test == 'content':
+		# Set the random seed
+		import random
+		random.seed(seed)
 
-	# Get the absolute path of the script
-	script_dir = os.path.dirname(os.path.abspath(__file__))
-	
-	# Construct the path to the PDF file
-	pdf_path = os.path.join(script_dir, '..', '..', 'tests', 'data', 'file.pdf')
-	
-	extractor = PDFExtractor()
+		# Get the absolute path of the script
+		script_dir = os.path.dirname(os.path.abspath(__file__))
+		
+		# Construct the path to the PDF file
+		pdf_path = os.path.join(script_dir, '..', '..', 'tests', 'data', 'file.pdf')
+		
+		extractor = PDFExtractor()
 
-	try:
-		content = extractor.extract_content(pdf_path)
-		print("PDF content extracted successfully:")
-		print(content[:500] + "..." if len(content) > 500 else content)
-	except Exception as e:
-		print(f"An error occurred: {str(e)}")
+		try:
+			content = extractor.extract_content(pdf_path)
+			print("PDF content extracted successfully:")
+			print(content[:500] + "..." if len(content) > 500 else content)
+		except Exception as e:
+			print(f"An error occurred: {str(e)}")
+
+	elif test == 'figures':
+		extractor = PDFExtractor()
+		
+		# Path to the specified PDF file
+		pdf_path = "./projects/project_6/nature_salmonella.pdf"
+		
+		# Make sure the file exists
+		if not os.path.exists(pdf_path):
+			print(f"File not found: {pdf_path}")
+			return
+		
+		# Test single figure extraction
+		print("Extracting first figure...")
+		figure_path = extractor.extract_figure(pdf_path, 0)
+		if figure_path:
+			print(f"First figure saved to: {figure_path}")
+		else:
+			print("Failed to extract first figure")
+		
+		# Test all figures extraction
+		print("\nExtracting all figures...")
+		figures = extractor.extract_all_figures(pdf_path)
+		print(f"Extracted {len(figures)} figures:")
+		for fig_num, path in figures.items():
+			print(f"Figure {fig_num}: {path}")
+		
+	else:
+		return True
+
+
 
 if __name__ == "__main__":
 	main()

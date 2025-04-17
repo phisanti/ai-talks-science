@@ -30,7 +30,8 @@ def generate_section_info(
     section_name: str, 
     context: str, 
     template_reader: TemplateLoader, 
-    llm: LLMBackend
+    llm: LLMBackend,
+    qa_type: str = "generate_qa"
 ) -> str:
     """
     Generate information for a specific section of the paper.
@@ -40,6 +41,7 @@ def generate_section_info(
         context: Paper text or structured content
         template_reader: Template reader for loading prompt templates
         llm: Language model backend for generation
+        qa_type: Type of QA to generate, default is "generate_qa", alternative is "generate_qa_review"
         
     Returns:
         Structured information about the specified section
@@ -54,7 +56,7 @@ def generate_section_info(
 
     # Get section-specific instructions from template
     section_instr = template_reader.get_sections(
-        "generate_qa", 
+        qa_type, 
         [section_name, "TASK:", "REQUIREMENTS:"], 
         remove_hashtags=True
     )
@@ -66,7 +68,10 @@ def generate_section_info(
     
     CONVERSATION TEMPLATE:
     {section_instr}
-    """)    
+    """)
+    print("=" * 20)
+    print(prompt)
+    print("=" * 20)
     chain = prompt | llm.llm
 
     try:
@@ -79,7 +84,8 @@ def generate_section_info(
 def generate_qainformation(
     context: str, 
     template_reader: TemplateLoader,
-    llm: LLMBackend
+    llm: LLMBackend,
+    qa_type: str = "generate_qa"
 ) -> Dict[str, str]:
     """
     Extract content from paper and generate structured QA information.
@@ -88,6 +94,7 @@ def generate_qainformation(
         context: Paper content to process
         template_reader: Template loader for prompt templates
         llm: Language model backend for generation
+        qa_type: Type of QA to generate, default is "generate_qa"
         
     Returns:
         Dictionary mapping section names to generated QA content
@@ -108,7 +115,9 @@ def generate_qainformation(
     for section in sections:
         try:
             section_key = section.split()[1].lower()  # Extract "background", "maincontribution", "limitations"
-            section_data = generate_section_info(section, context, template_reader, llm)
+            print(f"Processing section: {section_key}")
+            print("=" * 20)
+            section_data = generate_section_info(section, context, template_reader, llm, qa_type)
             combined_data[section_key] = section_data
         except Exception as e:
             print(f"Error processing section {section}: {str(e)}")

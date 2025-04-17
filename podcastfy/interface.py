@@ -115,10 +115,12 @@ def get_voice(selected_voice, tts_model):
                 return voice_key
     return selected_voice    
 
-def update_config_preview(output_language, podcast_name, podcast_tagline, doctitle, person1_name, person2_name, 
-                         host_role, guest_role, conversation_style, dialogue_structure, 
-                         engagement_techniques, creativity, max_num_chunks, min_chunk_size,
-                         podcast_duration, tts_model, host_voice, guest_voice, audio_format, ending_message):
+def update_config_preview(
+    output_language, podcast_name, podcast_tagline, doctitle, person1_name, person2_name,
+    host_role, guest_role, conversation_style, document_type,
+    dialogue_structure, engagement_techniques, creativity,
+    podcast_duration, tts_model, host_voice, guest_voice, audio_format, ending_message
+):
     
     # Extract duration in minutes as an integer
     duration_minutes = podcast_duration
@@ -132,12 +134,11 @@ def update_config_preview(output_language, podcast_name, podcast_tagline, doctit
         "person1_name": person1_name,
         "person2_name": person2_name,
         "doctitle": doctitle,
+        "document_type": document_type,
         "conversation_style": conversation_style,
         "dialogue_structure": dialogue_structure,
         "engagement_techniques": engagement_techniques,
         "creativity": float(creativity),
-        "max_num_chunks": int(max_num_chunks),
-        "min_chunk_size": int(min_chunk_size),
         "duration": duration_minutes,
         "text_to_speech": {
             "default_tts_model": tts_model,

@@ -1,6 +1,7 @@
 .pypirc
 .gitignore
 .gradio
+app_local.py
 
 specs/
 

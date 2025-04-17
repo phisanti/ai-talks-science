@@ -182,6 +182,16 @@ class PodcastGenerator:
             self.config['qa_duration'] = format_podcast_duration(self.config['duration'], segment="discussion")
             self.config['conclusion_duration'] = format_podcast_duration(self.config['duration'], segment="conclusion")
         
+        # Select document generate_qa.md or generate_qa_review.md based on document_type 
+        self.document_type = self.config.get('document_type', 'paper')
+
+        if self.document_type == 'paper':
+            qa_template = self.template_reader.get_template("./podcastfy/configs/generate_qa.md")
+        elif self.document_type == 'review':
+            qa_template = self.template_reader.get_template("./podcastfy/configs/generate_qa_review.md")
+        else:
+            raise ValueError("document_type must be either 'paper' or 'review'")
+
         # Load templates
         common_instructions=self.template_reader.get_template("podcastfy/configs/common_instructions.md")
         self.config['common_instructions'] = self.template_reader.fill_template(common_instructions, self.config)
@@ -191,7 +201,7 @@ class PodcastGenerator:
         qa_session=self.template_reader.get_template("./podcastfy/configs/generate_qa_session.md")
         self.templates = {
             "introduction": self.template_reader.fill_template(introduction, self.config),
-            "qa": self.template_reader.get_template("./podcastfy/configs/generate_qa.md"),
+            "qa": qa_template,
             "qa_session": self.template_reader.fill_template(qa_session, self.config),
             "closing": self.template_reader.fill_template(closing, self.config)
         }
@@ -287,7 +297,8 @@ class PodcastGenerator:
         qa_info=generate_qainformation(
             self.pdf_context, 
             self.template_reader, 
-            self.llm
+            self.llm,
+            self.document_type
         )
         main_section=generate_qasession(qa_info, 
                                         self.templates['qa_session'], 
